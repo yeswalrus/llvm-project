@@ -100,9 +100,9 @@ ConceptSpecializationExpr *ConceptSpecializationExpr::Create(
     ImplicitConceptSpecializationDecl *SpecDecl,
     const ConstraintSatisfaction *Satisfaction, bool Dependent,
     bool ContainsUnexpandedParameterPack) {
-  return new (C)
-      ConceptSpecializationExpr(C, NamedConcept, ArgsAsWritten, SpecDecl, Satisfaction,
-                                Dependent, ContainsUnexpandedParameterPack);
+  return new (C) ConceptSpecializationExpr(C, NamedConcept, ArgsAsWritten,
+                                           SpecDecl, Satisfaction, Dependent,
+                                           ContainsUnexpandedParameterPack);
 }
 
 const TypeConstraint *
