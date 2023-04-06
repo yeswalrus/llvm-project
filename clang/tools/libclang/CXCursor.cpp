@@ -1410,7 +1410,8 @@ static int clang_Cursor_getTemplateArgument(CXCursor C, unsigned I,
   CXCursorKind kind = clang_getCursorKind(C);
   if (kind != CXCursor_FunctionDecl && kind != CXCursor_StructDecl &&
       kind != CXCursor_ClassDecl &&
-      kind != CXCursor_ClassTemplatePartialSpecialization) {
+      kind != CXCursor_ClassTemplatePartialSpecialization &&
+      kind != CXCursor_VarDecl) {
     return -1;
   }
 
@@ -1442,8 +1443,26 @@ static int clang_Cursor_getTemplateArgument(CXCursor C, unsigned I,
     return 0;
   }
 
+  if(kind == CXCursor_VarDecl) {
+    const Decl *const D = getCursorDecl(C);
+    if (!D) {
+      return CXGetTemplateArgumentStatus_BadDeclCast;
+    }
+    const auto *const VD = dyn_cast<VarDecl>(D);
+    if(!VD) {
+      return CXGetTemplateArgumentStatus_BadDeclCast;
+    }
+    const auto *const TS = VD->getType()->getAs<TemplateSpecializationType>();
+    if(!TS || TS->template_arguments().size() <= I) {
+      return CXGetTemplateArgumentStatus_BadDeclCast;
+    }
+    *TA = TS->template_arguments()[I];
+    return 0;
+  }
+
   return CXGetTemplateArgumentStatus_BadDeclCast;
 }
+
 
 enum CXTemplateArgumentKind clang_Cursor_getTemplateArgumentKind(CXCursor C,
                                                                  unsigned I) {
@@ -1475,19 +1494,24 @@ enum CXTemplateArgumentKind clang_Cursor_getTemplateArgumentKind(CXCursor C,
 
   return CXTemplateArgumentKind_Invalid;
 }
+//FIXME: Replace these with a getTemplateArgument returning a Cursor which can be queried.
 
 CXType clang_Cursor_getTemplateArgumentType(CXCursor C, unsigned I) {
+  auto TU = getCursorTU(C);
   TemplateArgument TA;
   if (clang_Cursor_getTemplateArgument(C, I, &TA) !=
       CXGetTemplateArgumentStatus_Success) {
-    return cxtype::MakeCXType(QualType(), getCursorTU(C));
+    return cxtype::MakeCXType(QualType(), TU);
   }
 
-  if (TA.getKind() != TemplateArgument::Type) {
-    return cxtype::MakeCXType(QualType(), getCursorTU(C));
+  switch(TA.getKind()) {
+    case TemplateArgument::Type:
+      return cxtype::MakeCXType(TA.getAsType(), TU);
+    case TemplateArgument::Declaration:
+      return cxtype::MakeCXType(TA.getAsDecl()->getType(), TU);
+    default:
+      return cxtype::MakeCXType(QualType(), TU);
   }
-
-  return cxtype::MakeCXType(TA.getAsType(), getCursorTU(C));
 }
 
 long long clang_Cursor_getTemplateArgumentValue(CXCursor C, unsigned I) {
@@ -1523,6 +1547,57 @@ unsigned long long clang_Cursor_getTemplateArgumentUnsignedValue(CXCursor C,
   return TA.getAsIntegral().getZExtValue();
 }
 
+CXString clang_Cursor_getTemplateArgumentSpelling(CXCursor C, unsigned I) {
+  TemplateArgument TA;
+  if(clang_Cursor_getTemplateArgument(C, I, &TA) != CXGetTemplateArgumentStatus_Success) {
+    assert(0 && "Unable to retrieve TemplateArgument");
+    return cxstring::createNull();
+  }
+
+
+  ASTContext& ctx = getCursorContext(C);
+  PrintingPolicy PP(ctx.getLangOpts());
+  PP.FullyQualifiedName = 1;
+  PP.PrintCanonicalTypes = 1;
+  PP.SuppressScope = 0;
+  PP.SuppressInlineNamespace = 0;
+  PP.ConstantsAsWritten = 0;
+
+  switch(TA.getKind()) {
+    case TemplateArgument::Type:
+      return cxstring::createDup(StringRef(TA.getAsType().getAsString(PP)));
+    case TemplateArgument::Declaration:
+      return cxstring::createDup(StringRef(TA.getAsDecl()->getQualifiedNameAsString()));
+    case TemplateArgument::Expression: {
+      std::string Str;
+      llvm::raw_string_ostream OS(Str);
+      const auto EX = TA.getAsExpr();
+      
+      EX->printPretty(OS, nullptr, PP, 0, "\n", &getCursorContext(C));
+      /*
+      For reference, if StmtPrinter isn't edited, we need to do something like this
+      (but obviously more generic with recursion instead of nested loops)
+      for (auto &C : EX->children()) {
+        for(auto& CC : C->children()) {
+
+        if (const DeclRefExpr* DRE = dyn_cast_or_null<DeclRefExpr>(CC); DRE) {
+          const NamedDecl *ND = DRE->getDecl();
+          DRE->dump();
+          llvm::outs() << "Found" << ND->getQualifiedNameAsString() << "\n";
+          llvm::outs().flush();
+          return cxstring::createDup(StringRef(ND->getQualifiedNameAsString()));
+        }
+        }
+      }
+      return cxstring::createNull();
+      */
+      return cxstring::createDup(StringRef(Str));
+    }
+    default:
+      return cxstring::createNull();
+  }
+
+}
 //===----------------------------------------------------------------------===//
 // CXCursorSet.
 //===----------------------------------------------------------------------===//

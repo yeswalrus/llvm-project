@@ -76,6 +76,7 @@ LLVM_13 {
     clang_Cursor_getTemplateArgumentType;
     clang_Cursor_getTemplateArgumentUnsignedValue;
     clang_Cursor_getTemplateArgumentValue;
+    clang_Cursor_getTemplateArgumentSpelling;
     clang_Cursor_getTranslationUnit;
     clang_Cursor_getVarDeclInitializer;
     clang_Cursor_hasAttrs;

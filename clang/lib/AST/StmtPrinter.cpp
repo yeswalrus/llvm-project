@@ -1148,8 +1148,20 @@ void StmtPrinter::VisitDeclRefExpr(DeclRefExpr *Node) {
     TPOD->printAsExpr(OS, Policy);
     return;
   }
-  if (NestedNameSpecifier *Qualifier = Node->getQualifier())
-    Qualifier->print(OS, Policy);
+  // The DeclRefExpr may not print the *fully* qualified name if queried only for *it's* qualifier.
+  // EX: 
+  // namespace foo { int GLOBAL = 1; }
+  // using namespace foo;
+  // int i = GLOBAL;
+  //
+  // In this case, Node->getQualifier() would have no entries, and would print GLOBAL, not foo::GLOBAL as desired.
+  if(Policy.FullyQualifiedName) {
+    const auto* ND = Node->getDecl();
+    ND->printNestedNameSpecifier(OS, Policy);
+  } else {
+    if (NestedNameSpecifier *Qualifier = Node->getQualifier())
+      Qualifier->print(OS, Policy);
+  }
   if (Node->hasTemplateKeyword())
     OS << "template ";
   if (Policy.CleanUglifiedParameters &&

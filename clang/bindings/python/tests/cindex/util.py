@@ -29,6 +29,9 @@ def get_tu(source, lang='c', all_warnings=False, flags=[]):
     if lang == 'cpp':
         name = 't.cpp'
         args.append('-std=c++11')
+    elif lang == 'cpp20':
+        name = 't.cpp'
+        args.append('-std=c++20')
     elif lang == 'objc':
         name = 't.m'
     elif lang != 'c':

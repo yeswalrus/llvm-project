@@ -3034,6 +3034,24 @@ CINDEX_LINKAGE unsigned long long
 clang_Cursor_getTemplateArgumentUnsignedValue(CXCursor C, unsigned I);
 
 /**
+ * Retrieve the spelling of a template argument.
+ * For example, for the following delcaration:
+ *   constexpr int A = 1;
+ *   struct Foo{ int a; };
+ *   namespace ns {
+ *     constexpr Foo FOO{ .a = 2 };
+ *   }
+ *   template<class T, int kI, Foo kFoo>
+ *   struct Templated {};
+ * 
+ *   using namespace ns;
+ *   Templated<float, A, FOO> templated;
+ * this returns ["float", "A", "ns::Foo"] for I = [0, 1, 2]
+*/
+CINDEX_LINKAGE CXString
+clang_Cursor_getTemplateArgumentSpelling(CXCursor C, unsigned I);
+
+/**
  * Determine whether two CXTypes represent the same type.
  *
  * \returns non-zero if the CXTypes represent the same type and

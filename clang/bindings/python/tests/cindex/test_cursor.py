@@ -603,6 +603,48 @@ class TestCursor(unittest.TestCase):
         self.assertEqual(foos[1].get_template_argument_unsigned_value(0), 2 ** 32 - 7)
         self.assertEqual(foos[1].get_template_argument_unsigned_value(2), True)
 
+    def test_get_template_argument_nontype(self):
+        kTemplate20ArgTest = """\
+            struct Arg{ int a; int b;};
+            namespace ns{
+              constexpr Arg ARG{ .a = 1, .b = 2 };
+            
+
+              template <int kInt, typename T, bool kBool, Arg kArg>
+              void foo();
+
+              template<>
+              void foo<-7, float, true, ARG>();
+            } // ns
+        """
+        tu = get_tu(kTemplate20ArgTest, lang='cpp20')
+        foos = get_cursors(tu, 'foo')
+        self.assertEqual(foos[1].get_template_argument_type(3).spelling, "const Arg")
+        self.assertEqual(foos[1].get_template_argument_kind(3), TemplateArgumentKind.DECLARATION)
+
+    def test_get_template_argument_spelling(self):
+        kTemplate20ArgTest = """\
+            struct Arg{ int a; int b;};
+            namespace ns{
+              constexpr Arg ARG{ .a = 1, .b = 2 };
+              namespace nested{
+                constexpr Arg ARG{.a = 3, .b = 4};
+              }
+              constexpr bool GLOBAL_BOOLEAN = true;   
+              using MYTYPE = float;
+
+              template <int kInt, typename T, bool kBool, Arg kArg>
+              struct Foo{};
+
+              
+            } // ns
+            using namespace ns;
+            Foo<-7, MYTYPE, GLOBAL_BOOLEAN, ARG> myFoo;
+        """
+        tu = get_tu(kTemplate20ArgTest, lang='cpp20')
+        foos = get_cursors(tu, 'myFoo')
+        self.assertEqual(foos[0].get_template_argument_spelling(3), "ns::ARG")
+
     def test_referenced(self):
         tu = get_tu('void foo(); void bar() { foo(); }')
         foo = get_cursor(tu, 'foo')

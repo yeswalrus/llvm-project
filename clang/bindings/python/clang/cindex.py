@@ -1385,6 +1385,11 @@ TemplateArgumentKind.TYPE = TemplateArgumentKind(1)
 TemplateArgumentKind.DECLARATION = TemplateArgumentKind(2)
 TemplateArgumentKind.NULLPTR = TemplateArgumentKind(3)
 TemplateArgumentKind.INTEGRAL = TemplateArgumentKind(4)
+TemplateArgumentKind.TEMPLATE = TemplateArgumentKind(5) 
+TemplateArgumentKind.TEMPLATEEXPANSION = TemplateArgumentKind(6)
+TemplateArgumentKind.EXPRESSION = TemplateArgumentKind(7)
+TemplateArgumentKind.PACK = TemplateArgumentKind(8)
+TemplateArgumentKind.INVALID = TemplateArgumentKind(9)
 
 ### Exception Specification Kinds ###
 class ExceptionSpecificationKind(BaseEnumeration):
@@ -1880,6 +1885,10 @@ class Cursor(Structure):
         """Returns the value of the indicated arg as an unsigned 64b integer."""
         return conf.lib.clang_Cursor_getTemplateArgumentUnsignedValue(self, num)
 
+    def get_template_argument_spelling(self, num):
+        """Returns the fully qualified spelling of the indicated arg as a string."""
+        return conf.lib.clang_Cursor_getTemplateArgumentSpelling(self, num)
+    
     def get_children(self):
         """Return an iterator for accessing the children of this cursor."""
 
@@ -4059,6 +4068,11 @@ functionList = [
   ("clang_Cursor_getTemplateArgumentUnsignedValue",
    [Cursor, c_uint],
    c_ulonglong),
+
+  ("clang_Cursor_getTemplateArgumentSpelling",
+   [Cursor, c_uint],
+   _CXString,
+   _CXString.from_result),
 
   ("clang_Cursor_isAnonymous",
    [Cursor],
